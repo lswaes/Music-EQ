@@ -1,0 +1,863 @@
+classdef Equalizer < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure              matlab.ui.Figure
+        Panel                 matlab.ui.container.Panel
+        FILENAME              matlab.ui.control.EditField
+        BROWSE                matlab.ui.control.Button
+        UIAxes                matlab.ui.control.UIAxes
+        Panel2                matlab.ui.container.Panel
+        HzLabel_3             matlab.ui.control.Label
+        HZ32                  matlab.ui.control.Slider
+        HzLabel               matlab.ui.control.Label
+        HZ525                 matlab.ui.control.Slider
+        kHzLabel              matlab.ui.control.Label
+        KHZ1                  matlab.ui.control.Slider
+        HzLabel_2             matlab.ui.control.Label
+        HZ64                  matlab.ui.control.Slider
+        KHZLabel_2            matlab.ui.control.Label
+        KHZ4                  matlab.ui.control.Slider
+        HzLabel_4             matlab.ui.control.Label
+        HZ125                 matlab.ui.control.Slider
+        HzLabel_5             matlab.ui.control.Label
+        HZ250                 matlab.ui.control.Slider
+        KHZLabel              matlab.ui.control.Label
+        KHZ2                  matlab.ui.control.Slider
+        KHZLabel_3            matlab.ui.control.Label
+        KHZ8                  matlab.ui.control.Slider
+        KHZLabel_4            matlab.ui.control.Label
+        KHZ14                 matlab.ui.control.Slider
+        dBLabel               matlab.ui.control.Label
+        dBLabel_2             matlab.ui.control.Label
+        Label                 matlab.ui.control.Label
+        Panel_2               matlab.ui.container.Panel
+        Panel3                matlab.ui.container.Panel
+        VOLUME                matlab.ui.control.Slider
+        PLAY                  matlab.ui.control.Button
+        STOP                  matlab.ui.control.Button
+        StyleDropDown         matlab.ui.control.DropDown
+        SliderLabel           matlab.ui.control.Label
+        ProccesingTimeslider  matlab.ui.control.Slider
+        ProccessingTime       matlab.ui.control.Label
+        SumTime               matlab.ui.control.Label
+        Button_2              matlab.ui.control.Button
+        Button                matlab.ui.control.Button
+    end
+
+
+    properties (Access = private)
+        stop =0;
+        file;
+        flag =1 ;
+        dem = 0;
+        po = 0.1;
+        pso = 0;
+        pco = 3;
+        fs;
+        sizeS;
+        FileReader;
+        deviceWriter;
+end
+
+    methods (Access = private)    
+        function TimeScrip(app)
+            app.ProccesingTimeslider.Value = (app.pso*app.pco)/app.sizeS;
+            tm=(app.pso*app.pco/app.fs)/6;
+            tm0 = app.sizeS/app.fs;
+            t1=floor(tm/60);
+            t2=floor(mod(tm,60));
+            if t2<10
+                t2s=['0' num2str(t2)];
+            else
+                t2s=num2str(t2);
+            end                
+            t10=floor(tm0/60);
+            t20=floor(mod(tm0,60));
+            if t20<10
+                t20s=['0' num2str(t20)];
+            else
+                t20s=num2str(t20);
+            end
+            app.SumTime.Text = [num2str(t10) ':' num2str(t20s)];
+            app.ProccessingTime.Text = [num2str(t1) ':' t2s];
+            SoT20s = (t20+10)/100;
+            t = t10+SoT20s;
+            app.ProccesingTimeslider.Limits = [0 t];
+        end
+        
+    end
+
+  
+
+
+    methods (Access = private)
+
+        % Code that executes after component creation
+        function startupFcn(app)
+           
+            set(app.UIAxes,'XTick',[],'YTick',[]);
+             
+        end
+
+        % Button pushed function: PLAY
+        function PLAYButtonPushed(app, event)
+            if strcmp(app.PLAY.Text,'PLAY')
+                app.PLAY.Text = 'PAUSE';
+            elseif strcmp(app.PLAY.Text,'PAUSE')
+                app.PLAY.Text = 'PLAY';
+            end
+            if app.flag == 1
+                app.FileReader = dsp.AudioFileReader(app.file,'SamplesPerFrame',1024);
+                app.fs = app.FileReader.SampleRate;
+                app.deviceWriter = audioDeviceWriter('SampleRate',app.FileReader.SampleRate);
+            end
+            info = audioinfo(app.file);
+            app.sizeS = info.TotalSamples;
+            app.pso=round(app.po*app.fs);
+            S1 = app.HZ32.Value/10;
+            S2 = app.HZ64.Value/10;
+            S3 = app.HZ125.Value/10;
+            S4 = app.HZ250.Value/10;
+            S5 = app.HZ525.Value/10;
+            S6 = app.KHZ1.Value/10;
+            S7 = app.KHZ2.Value/10;
+            S8 = app.KHZ4.Value/10;
+            S9 = app.KHZ8.Value/10;
+            S10 = app.KHZ14.Value/10;
+            while ~isDone(app.FileReader)
+                mySignal = app.FileReader();
+                mySignal1 = mySignal(:,2);
+                TimeScrip(app);
+                app.flag = 0;
+                app.pco = app.pco+1;
+                % pause loop
+                if strcmp(app.PLAY.Text,'PLAY') == 1
+                    while strcmp(app.PLAY.Text,'PLAY') == 1 && app.stop == 0
+                        pause(1)
+                    end
+                end
+       
+                if app.HZ32.Value ~= S1 || app.HZ64.Value ~= S2 ...
+                        || app.HZ125.Value ~= S3 || ...
+                        S4 ~= app.HZ250.Value || ...
+                        S5 ~= app.HZ525.Value || ...
+                        app.KHZ1.Value ~= S6 || ...
+                        app.KHZ2.Value ~= S7 || ...
+                        app.KHZ4.Value ~= S8 || ...
+                        S9 ~= app.KHZ8.Value || ...
+                        S10 ~= app.KHZ14.Value
+                    S1 = app.HZ32.Value/10;
+                    S2 = app.HZ64.Value/10;
+                    S3 = app.HZ125.Value/10;
+                    S4 = app.HZ250.Value/10;
+                    S5 = app.HZ525.Value/10;
+                    S6 = app.KHZ1.Value/10;
+                    S7 = app.KHZ2.Value/10;
+                    S8 = app.KHZ4.Value/10;
+                    S9 = app.KHZ8.Value/10;
+                    S10 = app.KHZ14.Value/10;
+                end
+                %---------------------------------
+                %LOC Thong Thap - 32HZ
+                Fs1 = 1000;
+                nyquist1 = Fs1/2;
+                fc7 = 50;
+                wc5 = fc7/nyquist1;
+                N5=16;
+                b5 = fir1(N5,wc5,'low');
+                y13=filter(b5,1,mySignal1);
+            %                                              y14=fft(y13);
+            %                                              y15 = real(ifft((y14)));
+                %---------------------------------
+                %LOC DAI THONG - 64HZ
+                fc9 = 51;
+                fc10 = 115;
+                wc6 = [fc9/nyquist1 fc10/nyquist1]; %110 - 150 Khz - 130Khz
+                N6=16;
+                b6 = fir1(N6,wc6,'bandpass');
+                
+                y16=filter(b6,1,mySignal1);
+            %                                              y17=fft(y16);
+            %                                            y18 = real(ifft((y17)));
+                %---------------------------------
+                %LOC DAI THONG - 125HZ
+                fc11 = 116;
+                fc12 = 241;
+                wc7 = [fc11/nyquist1 fc12/nyquist1]; %110 - 150 Khz - 130Khz
+                N7=16;
+                b7 = fir1(N7,wc7,'bandpass');
+                y19=filter(b7,1,mySignal1);
+            %                                             y20=fft(y19);
+            %                                             y21 = real(ifft((y20)));
+                %----------------------
+                %                 BASS !!! 250hz
+                Fs = 10000;
+                fc1 = 242;
+                fc2 = 492;
+                nyquist = Fs/2;
+                wc1 = [fc1/nyquist fc2/nyquist]; %TAN SO CAT CHUAN HOA
+                N1 = 16;
+                b1 = fir1(N1,wc1,'bandpass');
+                y1=filter(b1,1,mySignal1);
+            %                                             y2=fft(y1);
+            %                                             y3 = real(ifft((y2)));
+                %---------------------------------
+                %LOC DAI THONG - human voice- done
+                % wc2 = [0.05 0.13]; % 250 - 800 Hz - 525Hz
+                fc3 = 493;
+                fc4 = 990;
+                wc2 = [fc3/nyquist fc4/nyquist]; %500HZ
+                N=16;
+                b2 = fir1(N,wc2,'bandpass');
+                
+                y4=filter(b2,1,mySignal1);
+            %                                            y5=fft(y4);
+            %                                             y6 = real(ifft((y5)));
+                %plot(y2);
+                
+                %---------------------------------
+                %LOC DAI THONG - 1KHZ
+                fc15 = 991;
+                fc16 = 1090;
+                wc9 = [fc15/nyquist fc16/nyquist];
+                N9=16;
+                b9 = fir1(N9,wc9,'bandpass');
+                
+                y25=filter(b9,1,mySignal1);
+            %                                             y26=fft(y25);
+            %                                              y27 = real(ifft((y26)));
+                %---------------------------------
+                %LOC DAI THONG - 2KHZ
+                fc17 = 1091;
+                fc18 = 3990;
+                wc10 = [fc17/nyquist fc18/nyquist];
+                N10=16;
+                b10 = fir1(N10,wc10,'bandpass');
+                
+                y28=filter(b10,1,mySignal1);
+            %                                              y29=fft(y28);
+            %                                              y30 = real(ifft((y29)));
+                %---------------------------------
+                %LOC DAI THONG - 4KHZ
+                Fs2 = 20000;
+                nyquist2 = Fs2/2;
+                fc19 = 3991;
+                fc20 = 7990;
+                wc11 = [fc19/nyquist2 fc20/nyquist2];
+                N11=16;
+                b11 = fir1(N11,wc11,'bandpass');
+                y31=filter(b11,1,mySignal1);
+            %                                              y32=fft(y31);
+            %                                             y33 = real(ifft((y32)));
+                %---------------------------------
+                %LOC DAI THONG - 8KHZ
+                Fs3 = 30000;
+                nyquist3 = Fs3/2;
+                fc21 = 7991;
+                fc22 = 13990;
+                wc12 = [fc21/nyquist3 fc22/nyquist3];
+                N12=16;
+                b12 = fir1(N12,wc12,'bandpass');
+                
+                y34=filter(b12,1,mySignal1);
+            %                                             y35=fft(y34);
+            %                                             y36 = real(ifft((y35)));
+                %---------------------------------
+                %LOC DAI THONG - 14KHZ
+                
+                fc23 = 13991;
+                wc13 = fc23/nyquist3;
+                N13=16;
+                b13 = fir1(N13,wc13,'high');
+                y37=filter(b13,1,mySignal1);
+            %                                             y38=fft(y37);
+            %                                              y39 = real(ifft((y38)));
+                %---------------------------------------------------------
+                myProcessedSignal1 = (app.VOLUME.Value.*(mySignal1+...
+                    y4.*S5 + y25.*S6 + y13.*S1+...
+                    y1.*S4 + y19.*S3 + y16.*S2 + ...
+                    y28.*S7 + y31.*S8 + y34.*S9 + ...
+                    y37.*S10));
+                app.deviceWriter(myProcessedSignal1);
+                X = fft(myProcessedSignal1);
+                %VE PHO BIEN DO
+                N = length(mySignal);
+                M= round(N/2);
+                phoBD =abs(X); %Lay phan duong
+                pho = phoBD(1:M); %Chia doi pho
+                plot(app.UIAxes,pho);
+                if (app.stop ==1)
+                    release (app.FileReader)
+                    release (app.deviceWriter)
+                    app.PLAY.Text = 'PLAY';
+                    
+                    app.stop = 0;
+                end
+                drawnow limitrate;
+            end
+            
+        end
+
+        % Button pushed function: STOP
+        function STOPButtonPushed(app, event)
+            app.stop = 1;
+        end
+
+        % Value changed function: VOLUME
+        function VOLUMEValueChanged(app, event)
+            
+        end
+
+        % Button pushed function: BROWSE
+        function BROWSEButtonPushed(app, event)
+            app.file = uigetfile({'*.mp3';'*.wav'});
+            app.FILENAME.Value = app.file;
+            app.flag = 1;
+        end
+
+        % Value changed function: FILENAME
+        function FILENAMEValueChanged(app, event)
+    
+        end
+
+        % Value changed function: StyleDropDown
+        function StyleDropDownValueChanged(app, event)
+            value = app.StyleDropDown.Value;
+            if strcmp('Rock',value) == 1
+                app.HZ32.Value = -2;
+                app.HZ64.Value = 5;
+                app.HZ250.Value = -2;
+                app.HZ125.Value = 4;
+                app.HZ525.Value = -2;
+                app.KHZ1.Value = -1;
+                app.KHZ2.Value = 2;
+                app.KHZ4.Value = 3;
+                app.KHZ8.Value = 1;
+                app.KHZ14.Value = 4;
+            elseif strcmp('Flat',value) == 1
+                app.HZ32.Value = 0;
+                app.HZ64.Value = 0;
+                app.HZ125.Value = 0;
+                app.HZ250.Value = 0;
+                app.HZ525.Value = 0;
+                app.KHZ1.Value = 0;
+                app.KHZ2.Value = 0;
+                app.KHZ4.Value = 0;
+                app.KHZ8.Value = 0;
+                app.KHZ14.Value = 0;
+            elseif strcmp('Pop',value) == 1
+                app.HZ32.Value = -1;
+                app.HZ64.Value = 0;
+                app.HZ125.Value = 0;
+                app.HZ250.Value = 1;
+                app.HZ525.Value = 4;
+                app.KHZ1.Value = 3;
+                app.KHZ2.Value = 1;
+                app.KHZ4.Value = 0;
+                app.KHZ8.Value = -1;
+                app.KHZ14.Value = 1;
+             elseif strcmp('Bass',value) == 1
+                app.HZ32.Value = 6;
+                app.HZ64.Value = 4;
+                app.HZ125.Value = 6;
+                app.HZ250.Value = 2;
+                app.HZ525.Value = 0;
+                app.KHZ1.Value = 0;
+                app.KHZ2.Value = 0;
+                app.KHZ4.Value = 0;
+                app.KHZ8.Value = 0;
+                app.KHZ14.Value = 0;
+             elseif strcmp('Treble',value) == 1
+                app.HZ32.Value = 9;
+                app.HZ64.Value = 9;
+                app.HZ125.Value = 9;
+                app.HZ250.Value = 5;
+                app.HZ525.Value = 0;
+                app.KHZ1.Value = 4;
+                app.KHZ2.Value = 11;
+                app.KHZ4.Value = 11;
+                app.KHZ8.Value = 11;
+                app.KHZ14.Value = 11;
+             elseif strcmp('Ballad',value) == 1
+                app.HZ32.Value = 0;
+                app.HZ64.Value = 3;
+                app.HZ125.Value = 0;
+                app.HZ250.Value = 0;
+                app.HZ525.Value = 1;
+                app.KHZ1.Value = 4;
+                app.KHZ2.Value = 5;
+                app.KHZ4.Value = 3;
+                app.KHZ8.Value = 0;
+                app.KHZ14.Value = 1;
+             elseif strcmp('Classical',value) == 1
+                app.HZ32.Value = 0;
+                app.HZ64.Value = 0;
+                app.HZ125.Value = 0;
+                app.HZ250.Value = 0;
+                app.HZ525.Value = 0;
+                app.KHZ1.Value = 0;
+                app.KHZ2.Value = -6;
+                app.KHZ4.Value = -6;
+                app.KHZ8.Value = -6;
+                app.KHZ14.Value = -7;
+             elseif strcmp('Disco',value) == 1
+                app.HZ32.Value = 8;
+                app.HZ64.Value = 6;
+                app.HZ125.Value = 2;
+                app.HZ250.Value = 0;
+                app.HZ525.Value = 0;
+                app.KHZ1.Value = -4;
+                app.KHZ2.Value = -6;
+                app.KHZ4.Value = -6;
+                app.KHZ8.Value = 0;
+                app.KHZ14.Value = 0;
+             elseif strcmp('Dance',value) == 1
+                app.HZ32.Value = 0;
+                app.HZ64.Value = 0;
+                app.HZ125.Value = 2;
+                app.HZ250.Value = 6;
+                app.HZ525.Value = 6;
+                app.KHZ1.Value = 6;
+                app.KHZ2.Value = 2;
+                app.KHZ4.Value = 0;
+                app.KHZ8.Value = 0;
+                app.KHZ14.Value = 0;
+             elseif strcmp('Jazz',value) == 1
+                app.HZ32.Value = 3;
+                app.HZ64.Value = 3;
+                app.HZ125.Value = 1;
+                app.HZ250.Value = 2;
+                app.HZ525.Value = -1;
+                app.KHZ1.Value = -1;
+                app.KHZ2.Value = 0;
+                app.KHZ4.Value = 1;
+                app.KHZ8.Value = 2;
+                app.KHZ14.Value = 4;
+             elseif strcmp('Powerfull',value) == 1
+                app.HZ32.Value = 10;
+                app.HZ64.Value = 10;
+                app.HZ125.Value = 5;
+                app.HZ250.Value = -5;
+                app.HZ525.Value = -3;
+                app.KHZ1.Value = 2;
+                app.KHZ2.Value = 8;
+                app.KHZ4.Value = 10;
+                app.KHZ8.Value = 11;
+                app.KHZ14.Value = 12;
+            elseif strcmp('Default',value) == 1
+                app.HZ32.Value = 0;
+                app.HZ64.Value = 0;
+                app.HZ125.Value = 0;
+                app.HZ250.Value = 0;
+                app.HZ525.Value = 0;
+                app.KHZ1.Value = 0;
+                app.KHZ2.Value = 0;
+                app.KHZ4.Value = 0;
+                app.KHZ8.Value = 0;
+                app.KHZ14.Value = 0;
+           end
+                
+        end
+
+        % Button pushed function: Button_2
+        function FowardButton(app, event)
+            app.FileReader = app.FileReader + 100;
+        end
+
+        % Value changed function: ProccesingTimeslider
+        function ProccesingTimesliderValueChanged(app, event)
+            
+        end
+    end
+
+    % App initialization and construction
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure
+            app.UIFigure = uifigure;
+            app.UIFigure.Color = [0.0196 0.0196 0.0196];
+            app.UIFigure.Position = [100 100 790 641];
+            app.UIFigure.Name = 'UI Figure';
+            setAutoResize(app, app.UIFigure, true)
+
+            % Create Panel
+            app.Panel = uipanel(app.UIFigure);
+            app.Panel.ForegroundColor = [1 1 1];
+            app.Panel.Title = 'FILE SELECTION';
+            app.Panel.BackgroundColor = [0.6431 0.0118 0.6667];
+            app.Panel.FontName = '.VnArial';
+            app.Panel.FontAngle = 'italic';
+            app.Panel.FontWeight = 'bold';
+            app.Panel.FontSize = 14;
+            app.Panel.Position = [34 574 721 58];
+
+            % Create FILENAME
+            app.FILENAME = uieditfield(app.Panel, 'text');
+            app.FILENAME.ValueChangedFcn = createCallbackFcn(app, @FILENAMEValueChanged, true);
+            app.FILENAME.Position = [10 8 556 22];
+
+            % Create BROWSE
+            app.BROWSE = uibutton(app.Panel, 'push');
+            app.BROWSE.ButtonPushedFcn = createCallbackFcn(app, @BROWSEButtonPushed, true);
+            app.BROWSE.Position = [585 8 100 22];
+            app.BROWSE.Text = 'BROWSE';
+
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.UIFigure);
+            title(app.UIAxes, 'SOUND SPECTRUM');
+            app.UIAxes.Color = [0 0 0];
+            app.UIAxes.Position = [31 343 730 223];
+
+            % Create Panel2
+            app.Panel2 = uipanel(app.UIFigure);
+            app.Panel2.Title = 'EQUALIZER';
+            app.Panel2.BackgroundColor = [0.7608 0.6706 0.0078];
+            app.Panel2.FontAngle = 'italic';
+            app.Panel2.FontWeight = 'bold';
+            app.Panel2.FontSize = 14;
+            app.Panel2.Position = [25 15 741 211];
+
+            % Create HzLabel_3
+            app.HzLabel_3 = uilabel(app.Panel2);
+            app.HzLabel_3.HorizontalAlignment = 'center';
+            app.HzLabel_3.VerticalAlignment = 'center';
+            app.HzLabel_3.FontName = '.VnArial';
+            app.HzLabel_3.FontWeight = 'bold';
+            app.HzLabel_3.Position = [33 6 34 15];
+            app.HzLabel_3.Text = '32Hz';
+
+            % Create HZ32
+            app.HZ32 = uislider(app.Panel2);
+            app.HZ32.Limits = [-15 15];
+            app.HZ32.MajorTicks = [];
+            app.HZ32.MajorTickLabels = {};
+            app.HZ32.Orientation = 'vertical';
+            app.HZ32.MinorTicks = [];
+            app.HZ32.FontName = 'VNI-Avo';
+            app.HZ32.FontWeight = 'bold';
+            app.HZ32.Position = [48 39 3 131];
+
+            % Create HzLabel
+            app.HzLabel = uilabel(app.Panel2);
+            app.HzLabel.HorizontalAlignment = 'center';
+            app.HzLabel.VerticalAlignment = 'center';
+            app.HzLabel.FontName = '.VnArial';
+            app.HzLabel.FontWeight = 'bold';
+            app.HzLabel.Position = [333 5 41 15];
+            app.HzLabel.Text = '525Hz';
+
+            % Create HZ525
+            app.HZ525 = uislider(app.Panel2);
+            app.HZ525.Limits = [-15 15];
+            app.HZ525.MajorTicks = [];
+            app.HZ525.MajorTickLabels = {};
+            app.HZ525.Orientation = 'vertical';
+            app.HZ525.MinorTicks = [];
+            app.HZ525.FontName = 'VNI-Avo';
+            app.HZ525.FontWeight = 'bold';
+            app.HZ525.Position = [352 36 3 131];
+
+            % Create kHzLabel
+            app.kHzLabel = uilabel(app.Panel2);
+            app.kHzLabel.HorizontalAlignment = 'center';
+            app.kHzLabel.VerticalAlignment = 'center';
+            app.kHzLabel.FontName = '.VnArial';
+            app.kHzLabel.FontWeight = 'bold';
+            app.kHzLabel.Position = [410 6 34 15];
+            app.kHzLabel.Text = '1kHz';
+
+            % Create KHZ1
+            app.KHZ1 = uislider(app.Panel2);
+            app.KHZ1.Limits = [-15 15];
+            app.KHZ1.MajorTicks = [];
+            app.KHZ1.MajorTickLabels = {};
+            app.KHZ1.Orientation = 'vertical';
+            app.KHZ1.MinorTicks = [];
+            app.KHZ1.FontName = 'VNI-Avo';
+            app.KHZ1.FontWeight = 'bold';
+            app.KHZ1.Position = [425 36 3 131];
+
+            % Create HzLabel_2
+            app.HzLabel_2 = uilabel(app.Panel2);
+            app.HzLabel_2.HorizontalAlignment = 'center';
+            app.HzLabel_2.VerticalAlignment = 'center';
+            app.HzLabel_2.FontName = '.VnArial';
+            app.HzLabel_2.FontWeight = 'bold';
+            app.HzLabel_2.Position = [105 5 34 15];
+            app.HzLabel_2.Text = '64Hz';
+
+            % Create HZ64
+            app.HZ64 = uislider(app.Panel2);
+            app.HZ64.Limits = [-15 15];
+            app.HZ64.MajorTicks = [];
+            app.HZ64.MajorTickLabels = {};
+            app.HZ64.Orientation = 'vertical';
+            app.HZ64.MinorTicks = [];
+            app.HZ64.FontName = 'VNI-Avo';
+            app.HZ64.FontWeight = 'bold';
+            app.HZ64.Position = [120 38 3 131];
+
+            % Create KHZLabel_2
+            app.KHZLabel_2 = uilabel(app.Panel2);
+            app.KHZLabel_2.HorizontalAlignment = 'center';
+            app.KHZLabel_2.VerticalAlignment = 'center';
+            app.KHZLabel_2.FontName = '.VnArial';
+            app.KHZLabel_2.FontWeight = 'bold';
+            app.KHZLabel_2.Position = [554 5 37 15];
+            app.KHZLabel_2.Text = '4KHZ';
+
+            % Create KHZ4
+            app.KHZ4 = uislider(app.Panel2);
+            app.KHZ4.Limits = [-15 15];
+            app.KHZ4.MajorTicks = [];
+            app.KHZ4.MajorTickLabels = {};
+            app.KHZ4.Orientation = 'vertical';
+            app.KHZ4.MinorTicks = [];
+            app.KHZ4.FontName = 'VNI-Avo';
+            app.KHZ4.FontWeight = 'bold';
+            app.KHZ4.Position = [571 35 3 131];
+
+            % Create HzLabel_4
+            app.HzLabel_4 = uilabel(app.Panel2);
+            app.HzLabel_4.HorizontalAlignment = 'right';
+            app.HzLabel_4.FontName = '.VnArial';
+            app.HzLabel_4.FontWeight = 'bold';
+            app.HzLabel_4.Position = [177 5 41 15];
+            app.HzLabel_4.Text = '125Hz';
+
+            % Create HZ125
+            app.HZ125 = uislider(app.Panel2);
+            app.HZ125.Limits = [-15 15];
+            app.HZ125.MajorTicks = [];
+            app.HZ125.MajorTickLabels = {};
+            app.HZ125.Orientation = 'vertical';
+            app.HZ125.MinorTicks = [];
+            app.HZ125.FontName = 'VNI-Avo';
+            app.HZ125.FontWeight = 'bold';
+            app.HZ125.Position = [196 38 3 131];
+
+            % Create HzLabel_5
+            app.HzLabel_5 = uilabel(app.Panel2);
+            app.HzLabel_5.HorizontalAlignment = 'right';
+            app.HzLabel_5.FontName = '.VnArial';
+            app.HzLabel_5.FontWeight = 'bold';
+            app.HzLabel_5.Position = [254 3 41 15];
+            app.HzLabel_5.Text = '250Hz';
+
+            % Create HZ250
+            app.HZ250 = uislider(app.Panel2);
+            app.HZ250.Limits = [-15 15];
+            app.HZ250.MajorTicks = [];
+            app.HZ250.MajorTickLabels = {};
+            app.HZ250.Orientation = 'vertical';
+            app.HZ250.MinorTicks = [];
+            app.HZ250.FontName = 'VNI-Avo';
+            app.HZ250.FontWeight = 'bold';
+            app.HZ250.Position = [273 36 3 131];
+
+            % Create KHZLabel
+            app.KHZLabel = uilabel(app.Panel2);
+            app.KHZLabel.HorizontalAlignment = 'right';
+            app.KHZLabel.FontName = '.VnArial';
+            app.KHZLabel.FontWeight = 'bold';
+            app.KHZLabel.Position = [482 5 37 15];
+            app.KHZLabel.Text = '2KHZ';
+
+            % Create KHZ2
+            app.KHZ2 = uislider(app.Panel2);
+            app.KHZ2.Limits = [-15 15];
+            app.KHZ2.MajorTicks = [];
+            app.KHZ2.MajorTickLabels = {};
+            app.KHZ2.Orientation = 'vertical';
+            app.KHZ2.MinorTicks = [];
+            app.KHZ2.FontName = 'VNI-Avo';
+            app.KHZ2.FontWeight = 'bold';
+            app.KHZ2.Position = [499 35 3 131];
+
+            % Create KHZLabel_3
+            app.KHZLabel_3 = uilabel(app.Panel2);
+            app.KHZLabel_3.HorizontalAlignment = 'center';
+            app.KHZLabel_3.VerticalAlignment = 'center';
+            app.KHZLabel_3.FontName = '.VnArial';
+            app.KHZLabel_3.FontWeight = 'bold';
+            app.KHZLabel_3.Position = [621 5 37 15];
+            app.KHZLabel_3.Text = '8KHZ';
+
+            % Create KHZ8
+            app.KHZ8 = uislider(app.Panel2);
+            app.KHZ8.Limits = [-15 15];
+            app.KHZ8.MajorTicks = [];
+            app.KHZ8.MajorTickLabels = {};
+            app.KHZ8.Orientation = 'vertical';
+            app.KHZ8.MinorTicks = [];
+            app.KHZ8.FontName = 'VNI-Avo';
+            app.KHZ8.FontWeight = 'bold';
+            app.KHZ8.Position = [638 36 3 131];
+
+            % Create KHZLabel_4
+            app.KHZLabel_4 = uilabel(app.Panel2);
+            app.KHZLabel_4.HorizontalAlignment = 'center';
+            app.KHZLabel_4.VerticalAlignment = 'center';
+            app.KHZLabel_4.FontName = '.VnArial';
+            app.KHZLabel_4.FontWeight = 'bold';
+            app.KHZLabel_4.Position = [686 6 44 15];
+            app.KHZLabel_4.Text = '14KHZ';
+
+            % Create KHZ14
+            app.KHZ14 = uislider(app.Panel2);
+            app.KHZ14.Limits = [-15 15];
+            app.KHZ14.MajorTicks = [];
+            app.KHZ14.MajorTickLabels = {};
+            app.KHZ14.Orientation = 'vertical';
+            app.KHZ14.MinorTicks = [];
+            app.KHZ14.FontName = 'VNI-Avo';
+            app.KHZ14.FontWeight = 'bold';
+            app.KHZ14.Position = [706 36 3 131];
+
+            % Create dBLabel
+            app.dBLabel = uilabel(app.Panel2);
+            app.dBLabel.Position = [0 161 34 15];
+            app.dBLabel.Text = '15dB';
+
+            % Create dBLabel_2
+            app.dBLabel_2 = uilabel(app.Panel2);
+            app.dBLabel_2.Position = [0 39 38 15];
+            app.dBLabel_2.Text = '-15dB';
+
+            % Create Label
+            app.Label = uilabel(app.Panel2);
+            app.Label.Position = [6 97 25 15];
+            app.Label.Text = '0';
+
+            % Create Panel_2
+            app.Panel_2 = uipanel(app.UIFigure);
+            app.Panel_2.BackgroundColor = [0.0471 0.9529 0.9529];
+            app.Panel_2.Position = [29 234 733 101];
+
+            % Create Panel3
+            app.Panel3 = uipanel(app.Panel_2);
+            app.Panel3.ForegroundColor = [1 1 1];
+            app.Panel3.Title = 'VOLUME';
+            app.Panel3.BackgroundColor = [0.0863 0.0235 0.7686];
+            app.Panel3.FontAngle = 'italic';
+            app.Panel3.FontWeight = 'bold';
+            app.Panel3.FontSize = 14;
+            app.Panel3.Position = [7 11 333 50];
+
+            % Create VOLUME
+            app.VOLUME = uislider(app.Panel3);
+            app.VOLUME.Limits = [0 5];
+            app.VOLUME.MajorTicks = [];
+            app.VOLUME.MajorTickLabels = {};
+            app.VOLUME.ValueChangedFcn = createCallbackFcn(app, @VOLUMEValueChanged, true);
+            app.VOLUME.MinorTicks = [];
+            app.VOLUME.FontName = 'VNI-Avo';
+            app.VOLUME.FontSize = 16;
+            app.VOLUME.FontWeight = 'bold';
+            app.VOLUME.FontColor = [0.9804 0.9608 0.9608];
+            app.VOLUME.Position = [20 14 291 3];
+
+            % Create PLAY
+            app.PLAY = uibutton(app.Panel_2, 'push');
+            app.PLAY.ButtonPushedFcn = createCallbackFcn(app, @PLAYButtonPushed, true);
+            app.PLAY.BackgroundColor = [0 1 0];
+            app.PLAY.FontSize = 18;
+            app.PLAY.FontWeight = 'bold';
+            app.PLAY.Position = [349.5 11 83 50];
+            app.PLAY.Text = 'PLAY';
+
+            % Create STOP
+            app.STOP = uibutton(app.Panel_2, 'push');
+            app.STOP.ButtonPushedFcn = createCallbackFcn(app, @STOPButtonPushed, true);
+            app.STOP.BackgroundColor = [1 0.0118 0.0118];
+            app.STOP.FontSize = 18;
+            app.STOP.FontWeight = 'bold';
+            app.STOP.Position = [440.5 11 83 50];
+            app.STOP.Text = 'STOP';
+
+            % Create StyleDropDown
+            app.StyleDropDown = uidropdown(app.Panel_2);
+            app.StyleDropDown.Items = {'Default', 'Rock', 'Flat', 'Pop', 'Bass', 'Treble', 'Ballad', 'Classical', 'Disco', 'Dance', 'Jazz', 'Powerfull'};
+            app.StyleDropDown.ValueChangedFcn = createCallbackFcn(app, @StyleDropDownValueChanged, true);
+            app.StyleDropDown.FontSize = 16;
+            app.StyleDropDown.FontWeight = 'bold';
+            app.StyleDropDown.FontAngle = 'italic';
+            app.StyleDropDown.FontColor = [0.9804 0.9412 0.9412];
+            app.StyleDropDown.BackgroundColor = [0.9725 0.0588 0.8667];
+            app.StyleDropDown.Position = [575 19 113 34];
+            app.StyleDropDown.Value = 'Default';
+
+            % Create SliderLabel
+            app.SliderLabel = uilabel(app.Panel_2);
+            app.SliderLabel.HorizontalAlignment = 'right';
+            app.SliderLabel.Position = [139 72 25 15];
+            app.SliderLabel.Text = '';
+
+            % Create ProccesingTimeslider
+            app.ProccesingTimeslider = uislider(app.Panel_2);
+            app.ProccesingTimeslider.Limits = [0 10];
+            app.ProccesingTimeslider.MajorTicks = [];
+            app.ProccesingTimeslider.MajorTickLabels = {};
+            app.ProccesingTimeslider.ValueChangedFcn = createCallbackFcn(app, @ProccesingTimesliderValueChanged, true);
+            app.ProccesingTimeslider.MinorTicks = [];
+            app.ProccesingTimeslider.Position = [194 78 375 3];
+
+            % Create ProccessingTime
+            app.ProccessingTime = uilabel(app.Panel_2);
+            app.ProccessingTime.Position = [159 72 28 15];
+            app.ProccessingTime.Text = '0';
+
+            % Create SumTime
+            app.SumTime = uilabel(app.Panel_2);
+            app.SumTime.Position = [575 72 25 15];
+            app.SumTime.Text = '0';
+
+            % Create Button_2
+            app.Button_2 = uibutton(app.Panel_2, 'push');
+            app.Button_2.ButtonPushedFcn = createCallbackFcn(app, @FowardButton, true);
+            app.Button_2.BackgroundColor = [0.8275 0.7529 0.7529];
+            app.Button_2.FontSize = 18;
+            app.Button_2.FontColor = [0.0196 0.0196 0.0196];
+            app.Button_2.Position = [613 62 38 30];
+            app.Button_2.Text = '>>';
+
+            % Create Button
+            app.Button = uibutton(app.Panel_2, 'push');
+            app.Button.BackgroundColor = [0.8275 0.7529 0.7529];
+            app.Button.FontSize = 18;
+            app.Button.Position = [119 66 35 26];
+            app.Button.Text = '<<';
+        end
+    end
+
+    methods (Access = public)
+
+        % Construct app
+        function app = Equalizer()
+
+            % Create and configure components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            % Execute the startup function
+            runStartupFcn(app, @startupFcn)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
